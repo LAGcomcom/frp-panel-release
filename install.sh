@@ -86,8 +86,6 @@ interactive_config() {
     read GH_MIRROR
     GH_MIRROR=${GH_MIRROR:-"https://ghfast.top"}
 
-    AUTH_SERVER="https://ymsq.movewellpro.fun"
-
     echo ""
     echo -e "${CYAN}========================================${NC}"
     echo -e "${CYAN}      确认配置信息${NC}"
@@ -99,7 +97,6 @@ interactive_config() {
     echo "  JWT密钥:       ${JWT_SECRET:0:8}..."
     echo "  Server Token:  ${SERVER_TOKEN:0:8}..."
     echo "  GitHub镜像:    $GH_MIRROR"
-    echo "  授权服务器:    $AUTH_SERVER (默认)"
     echo -e "${CYAN}========================================${NC}"
     echo ""
     echo -ne "${YELLOW}确认安装? [Y/n]: ${NC}"
