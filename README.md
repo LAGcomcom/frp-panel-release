@@ -7,13 +7,13 @@ FRP Panel 授权加密版本 - 一键安装部署
 SSH 登录服务器后执行：
 
 ```bash
-bash <(curl -sSL https://raw.githubusercontent.com/YOUR_USER/frp-panel-release/main/install.sh)
+bash <(curl -sSL https://raw.githubusercontent.com/comco/frp-panel-release/main/install.sh)
 ```
 
 或者：
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/YOUR_USER/frp-panel-release/main/install.sh -o install.sh
+curl -sSL https://raw.githubusercontent.com/comco/frp-panel-release/main/install.sh -o install.sh
 bash install.sh
 ```
 
