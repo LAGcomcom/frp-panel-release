@@ -107,21 +107,48 @@ interactive_config() {
     fi
 }
 
+download_file() {
+    local url="$1"
+    local output="$2"
+
+    if command -v aria2c &>/dev/null; then
+        aria2c -x 16 -s 16 -k 1M -d "$(dirname "$output")" -o "$(basename "$output")" "$url" 2>&1
+    elif command -v axel &>/dev/null; then
+        axel -n 16 -o "$output" "$url" 2>&1
+    else
+        curl -# -L -o "$output" "$url"
+    fi
+}
+
 download_files() {
     info "创建安装目录..."
     mkdir -p "$INSTALL_DIR"
 
-    info "正在下载文件..."
+    # 自动安装 aria2
+    if ! command -v aria2c &>/dev/null; then
+        info "安装 aria2 多线程下载工具..."
+        if command -v apt &>/dev/null; then
+            apt update -qq && apt install -y aria2 >/dev/null 2>&1
+        elif command -v yum &>/dev/null; then
+            yum install -y aria2 >/dev/null 2>&1
+        fi
+    fi
+
+    if command -v aria2c &>/dev/null; then
+        info "使用 aria2c 多线程下载 (16线程)"
+    else
+        warn "aria2 安装失败，使用 curl 下载"
+    fi
     echo ""
 
     info "下载 panel (加密面板)..."
-    curl -# -L -o "$INSTALL_DIR/panel" "${GITHUB_RAW}/panel" || error "下载 panel 失败"
+    download_file "${GITHUB_RAW}/panel" "$INSTALL_DIR/panel" || error "下载 panel 失败"
 
     info "下载 frps (FRP服务端)..."
-    curl -# -L -o "$INSTALL_DIR/frps" "${GITHUB_RAW}/frps" || error "下载 frps 失败"
+    download_file "${GITHUB_RAW}/frps" "$INSTALL_DIR/frps" || error "下载 frps 失败"
 
     info "下载 agent..."
-    curl -# -L -o "$INSTALL_DIR/agent" "${GITHUB_RAW}/agent" 2>/dev/null || warn "下载 agent 失败 (可选组件)"
+    download_file "${GITHUB_RAW}/agent" "$INSTALL_DIR/agent" 2>/dev/null || warn "下载 agent 失败 (可选组件)"
 
     chmod +x "$INSTALL_DIR/panel" "$INSTALL_DIR/frps" "$INSTALL_DIR/agent" 2>/dev/null
     info "文件下载完成"
