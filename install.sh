@@ -14,7 +14,7 @@ CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
 INSTALL_DIR="/opt/frp-panel"
-GITHUB_RAW="https://raw.githubusercontent.com/comco/frp-panel-release/main"
+GITHUB_RAW="https://raw.githubusercontent.com/LAGcomcom/frp-panel-release/main"
 
 # 工具函数
 info()  { echo -e "${GREEN}[INFO]${NC} $1"; }
