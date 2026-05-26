@@ -86,6 +86,8 @@ interactive_config() {
     read GH_MIRROR
     GH_MIRROR=${GH_MIRROR:-"https://ghfast.top"}
 
+    AUTH_SERVER="https://ymsq.movewellpro.fun"
+
     echo ""
     echo -e "${CYAN}========================================${NC}"
     echo -e "${CYAN}      确认配置信息${NC}"
