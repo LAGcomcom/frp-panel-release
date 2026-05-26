@@ -86,18 +86,7 @@ interactive_config() {
     read GH_MIRROR
     GH_MIRROR=${GH_MIRROR:-"https://ghfast.top"}
 
-    echo -ne "${YELLOW}Auth server [https://ymsq.movewellpro.fun]: ${NC}"
-    read AUTH_SERVER
-    AUTH_SERVER=${AUTH_SERVER:-"https://ymsq.movewellpro.fun"}
-
-    while true; do
-        echo -ne "${YELLOW}License key (AUTH-XXXX-XXXX-XXXX-XXXX): ${NC}"
-        read LICENSE_KEY
-        if [[ "$LICENSE_KEY" =~ ^AUTH-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$ ]]; then
-            break
-        fi
-        echo -e "${RED}Invalid format, use: AUTH-XXXX-XXXX-XXXX-XXXX${NC}"
-    done
+    AUTH_SERVER="https://ymsq.movewellpro.fun"
 
     echo ""
     echo -e "${CYAN}========================================${NC}"
@@ -110,8 +99,7 @@ interactive_config() {
     echo "  JWT secret:      ${JWT_SECRET:0:8}..."
     echo "  Server token:    ${SERVER_TOKEN:0:8}..."
     echo "  GitHub mirror:   $GH_MIRROR"
-    echo "  Auth server:     $AUTH_SERVER"
-    echo "  License key:     ${LICENSE_KEY:0:15}..."
+    echo "  Auth server:     $AUTH_SERVER (default)"
     echo -e "${CYAN}========================================${NC}"
     echo ""
     echo -ne "${YELLOW}Confirm install? [Y/n]: ${NC}"
