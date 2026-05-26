@@ -1,165 +1,150 @@
 #!/bin/bash
-# ============================================================
-# FRP Panel Licensed - 一键安装脚本
-# 用法: bash <(curl -sSL https://raw.githubusercontent.com/YOUR_USER/frp-panel-release/main/install.sh)
-# ============================================================
+# FRP Panel Licensed - One-click install script
 
 set -e
 
-# 颜色定义
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 CYAN='\033[0;36m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
 INSTALL_DIR="/opt/frp-panel"
 GITHUB_RAW="https://raw.githubusercontent.com/LAGcomcom/frp-panel-release/main"
 
-# 工具函数
 info()  { echo -e "${GREEN}[INFO]${NC} $1"; }
 warn()  { echo -e "${YELLOW}[WARN]${NC} $1"; }
 error() { echo -e "${RED}[ERROR]${NC} $1"; exit 1; }
 
-# 检查 root 权限
 if [ "$EUID" -ne 0 ]; then
-    error "请使用 root 用户运行此脚本: sudo bash install.sh"
+    error "Please run as root: sudo bash install.sh"
 fi
 
-# 检查系统
 check_system() {
     if [ -f /etc/os-release ]; then
         . /etc/os-release
-        OS=$ID
-        info "检测到系统: $PRETTY_NAME"
+        info "System: $PRETTY_NAME"
     else
-        error "无法检测操作系统类型"
+        error "Cannot detect OS"
     fi
-
     ARCH=$(uname -m)
     if [ "$ARCH" != "x86_64" ]; then
-        error "当前架构 ($ARCH) 暂不支持，仅支持 x86_64"
+        error "Architecture $ARCH not supported, x86_64 only"
     fi
 }
 
-# 交互式配置
 interactive_config() {
     echo ""
     echo -e "${CYAN}========================================${NC}"
-    echo -e "${CYAN}    FRP Panel Licensed 安装向导${NC}"
+    echo -e "${CYAN}    FRP Panel Licensed Setup${NC}"
     echo -e "${CYAN}========================================${NC}"
     echo ""
 
-    # Panel 端口
-    read -p "$(echo -e ${YELLOW}面板端口 [3333]: ${NC})" PANEL_PORT
+    echo -ne "${YELLOW}Panel port [3333]: ${NC}"
+    read PANEL_PORT
     PANEL_PORT=${PANEL_PORT:-3333}
 
-    # FRPS 绑定端口
-    read -p "$(echo -e ${YELLOW}FRP 服务端绑定端口 [7000]: ${NC})" BIND_PORT
+    echo -ne "${YELLOW}FRP bind port [7000]: ${NC}"
+    read BIND_PORT
     BIND_PORT=${BIND_PORT:-7000}
 
-    # FRPS Dashboard 端口
-    read -p "$(echo -e ${YELLOW}FRP Dashboard 端口 (可选，回车跳过): ${NC})" DASHBOARD_PORT
+    echo -ne "${YELLOW}FRP Dashboard port (optional, press Enter to skip): ${NC}"
+    read DASHBOARD_PORT
 
-    # 管理员邮箱
-    read -p "$(echo -e ${YELLOW}管理员邮箱 [admin@example.com]: ${NC})" ADMIN_EMAIL
+    echo -ne "${YELLOW}Admin email [admin@example.com]: ${NC}"
+    read ADMIN_EMAIL
     ADMIN_EMAIL=${ADMIN_EMAIL:-"admin@example.com"}
 
-    # 管理员密码
     while true; do
-        read -s -p "$(echo -e ${YELLOW}管理员密码: ${NC})" ADMIN_PASS
+        echo -ne "${YELLOW}Admin password (min 6 chars): ${NC}"
+        read -s ADMIN_PASS
         echo
         if [ ${#ADMIN_PASS} -ge 6 ]; then
             break
         fi
-        error "密码至少6位"
+        echo -e "${RED}Password must be at least 6 characters${NC}"
     done
 
-    # 确认密码
-    read -s -p "$(echo -e ${YELLOW}确认密码: ${NC})" ADMIN_PASS_CONFIRM
+    echo -ne "${YELLOW}Confirm password: ${NC}"
+    read -s ADMIN_PASS_CONFIRM
     echo
     if [ "$ADMIN_PASS" != "$ADMIN_PASS_CONFIRM" ]; then
-        error "两次密码不一致"
+        error "Passwords do not match"
     fi
 
-    # JWT Secret
     JWT_SECRET=$(openssl rand -hex 16 2>/dev/null || head -c 32 /dev/urandom | base64 | tr -d '/+=' | head -c 32)
-    read -p "$(echo -e ${YELLOW}JWT密钥 [自动生成]: ${NC})" JWT_INPUT
+    echo -ne "${YELLOW}JWT secret [auto-generate]: ${NC}"
+    read JWT_INPUT
     JWT_SECRET=${JWT_INPUT:-$JWT_SECRET}
 
-    # Server Token
     SERVER_TOKEN=$(openssl rand -hex 16 2>/dev/null || head -c 32 /dev/urandom | base64 | tr -d '/+=' | head -c 32)
-    read -p "$(echo -e ${YELLOW}FRP Server Token [自动生成]: ${NC})" TOKEN_INPUT
+    echo -ne "${YELLOW}FRP Server Token [auto-generate]: ${NC}"
+    read TOKEN_INPUT
     SERVER_TOKEN=${TOKEN_INPUT:-$SERVER_TOKEN}
 
-    # GitHub 镜像
-    read -p "$(echo -e ${YELLOW}GitHub 镜像地址 [https://ghfast.top]: ${NC})" GH_MIRROR
+    echo -ne "${YELLOW}GitHub mirror [https://ghfast.top]: ${NC}"
+    read GH_MIRROR
     GH_MIRROR=${GH_MIRROR:-"https://ghfast.top"}
 
-    # 授权服务器
-    read -p "$(echo -e ${YELLOW}授权服务器地址 [https://ymsq.movewellpro.fun]: ${NC})" AUTH_SERVER
+    echo -ne "${YELLOW}Auth server [https://ymsq.movewellpro.fun]: ${NC}"
+    read AUTH_SERVER
     AUTH_SERVER=${AUTH_SERVER:-"https://ymsq.movewellpro.fun"}
 
-    # 授权码
     while true; do
-        read -p "$(echo -e ${YELLOW}授权码 (AUTH-XXXX-XXXX-XXXX-XXXX): ${NC})" LICENSE_KEY
+        echo -ne "${YELLOW}License key (AUTH-XXXX-XXXX-XXXX-XXXX): ${NC}"
+        read LICENSE_KEY
         if [[ "$LICENSE_KEY" =~ ^AUTH-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$ ]]; then
             break
         fi
-        error "授权码格式不正确，应为 AUTH-XXXX-XXXX-XXXX-XXXX"
+        echo -e "${RED}Invalid format, use: AUTH-XXXX-XXXX-XXXX-XXXX${NC}"
     done
 
     echo ""
     echo -e "${CYAN}========================================${NC}"
-    echo -e "${CYAN}    配置确认${NC}"
+    echo -e "${CYAN}    Confirm Settings${NC}"
     echo -e "${CYAN}========================================${NC}"
-    echo "  面板端口:      $PANEL_PORT"
-    echo "  FRP绑定端口:   $BIND_PORT"
-    [ -n "$DASHBOARD_PORT" ] && echo "  Dashboard端口: $DASHBOARD_PORT"
-    echo "  管理员邮箱:    $ADMIN_EMAIL"
-    echo "  JWT密钥:       ${JWT_SECRET:0:8}..."
-    echo "  Server Token:  ${SERVER_TOKEN:0:8}..."
-    echo "  GitHub镜像:    $GH_MIRROR"
-    echo "  授权服务器:    $AUTH_SERVER"
-    echo "  授权码:        ${LICENSE_KEY:0:15}..."
+    echo "  Panel port:      $PANEL_PORT"
+    echo "  FRP bind port:   $BIND_PORT"
+    [ -n "$DASHBOARD_PORT" ] && echo "  Dashboard port:  $DASHBOARD_PORT"
+    echo "  Admin email:     $ADMIN_EMAIL"
+    echo "  JWT secret:      ${JWT_SECRET:0:8}..."
+    echo "  Server token:    ${SERVER_TOKEN:0:8}..."
+    echo "  GitHub mirror:   $GH_MIRROR"
+    echo "  Auth server:     $AUTH_SERVER"
+    echo "  License key:     ${LICENSE_KEY:0:15}..."
     echo -e "${CYAN}========================================${NC}"
     echo ""
-    read -p "$(echo -e ${YELLOW}确认安装? [Y/n]: ${NC})" CONFIRM
+    echo -ne "${YELLOW}Confirm install? [Y/n]: ${NC}"
+    read CONFIRM
     if [ "$CONFIRM" = "n" ] || [ "$CONFIRM" = "N" ]; then
-        echo "安装已取消"
+        echo "Install cancelled"
         exit 0
     fi
 }
 
-# 下载文件
 download_files() {
-    info "创建安装目录..."
+    info "Creating install directory..."
     mkdir -p "$INSTALL_DIR"
 
-    info "下载文件..."
+    info "Downloading files..."
     echo ""
 
-    # 下载 panel
-    info "下载 panel (加密面板)..."
-    curl -# -L -o "$INSTALL_DIR/panel" "${GITHUB_RAW}/panel" || error "下载 panel 失败"
+    info "Downloading panel..."
+    curl -# -L -o "$INSTALL_DIR/panel" "${GITHUB_RAW}/panel" || error "Failed to download panel"
 
-    # 下载 frps
-    info "下载 frps (FRP服务端)..."
-    curl -# -L -o "$INSTALL_DIR/frps" "${GITHUB_RAW}/frps" || error "下载 frps 失败"
+    info "Downloading frps..."
+    curl -# -L -o "$INSTALL_DIR/frps" "${GITHUB_RAW}/frps" || error "Failed to download frps"
 
-    # 下载 agent (可选)
-    info "下载 agent..."
-    curl -# -L -o "$INSTALL_DIR/agent" "${GITHUB_RAW}/agent" 2>/dev/null || warn "下载 agent 失败（可选组件）"
+    info "Downloading agent..."
+    curl -# -L -o "$INSTALL_DIR/agent" "${GITHUB_RAW}/agent" 2>/dev/null || warn "Failed to download agent (optional)"
 
     chmod +x "$INSTALL_DIR/panel" "$INSTALL_DIR/frps" "$INSTALL_DIR/agent" 2>/dev/null
-    info "文件下载完成"
+    info "Files downloaded"
 }
 
-# 生成配置文件
 generate_config() {
-    info "生成配置文件..."
+    info "Generating config files..."
 
-    # Panel config.yaml
     cat > "$INSTALL_DIR/config.yaml" << EOF
 server:
   host: "0.0.0.0"
@@ -195,7 +180,6 @@ license:
   auth_server: "$AUTH_SERVER"
 EOF
 
-    # FRPS frps.toml
     DASHBOARD_CONFIG=""
     if [ -n "$DASHBOARD_PORT" ]; then
         DASHBOARD_CONFIG="
@@ -211,7 +195,6 @@ auth.method = "token"
 auth.token = "$SERVER_TOKEN"$DASHBOARD_CONFIG
 EOF
 
-    # 保存安装信息
     cat > "$INSTALL_DIR/install_info.env" << EOF
 PANEL_PORT=$PANEL_PORT
 BIND_PORT=$BIND_PORT
@@ -220,14 +203,12 @@ INSTALL_DIR=$INSTALL_DIR
 INSTALL_DATE=$(date '+%Y-%m-%d %H:%M:%S')
 EOF
 
-    info "配置文件生成完成"
+    info "Config files generated"
 }
 
-# 创建 systemd 服务
 setup_services() {
-    info "创建 systemd 服务..."
+    info "Creating systemd services..."
 
-    # Panel 服务
     cat > /etc/systemd/system/frp-panel.service << EOF
 [Unit]
 Description=FRP Panel Licensed
@@ -247,7 +228,6 @@ StandardError=journal
 WantedBy=multi-user.target
 EOF
 
-    # FRPS 服务
     cat > /etc/systemd/system/frps.service << EOF
 [Unit]
 Description=FRP Server
@@ -268,72 +248,68 @@ EOF
 
     systemctl daemon-reload
     systemctl enable frp-panel frps
-    info "服务创建完成"
+    info "Services created"
 }
 
-# 启动服务
 start_services() {
-    info "启动服务..."
+    info "Starting services..."
 
     systemctl start frps
     sleep 1
     systemctl start frp-panel
-
     sleep 2
 
-    # 检查状态
     if systemctl is-active --quiet frps; then
-        info "FRPS 运行正常"
+        info "FRPS running"
     else
-        warn "FRPS 启动失败，请检查: journalctl -u frps -f"
+        warn "FRPS failed to start, check: journalctl -u frps -f"
     fi
 
     if systemctl is-active --quiet frp-panel; then
-        info "FRP Panel 运行正常"
+        info "FRP Panel running"
     else
-        warn "FRP Panel 启动失败，请检查: journalctl -u frp-panel -f"
+        warn "FRP Panel failed to start, check: journalctl -u frp-panel -f"
     fi
 }
 
-# 打印结果
 print_result() {
     SERVER_IP=$(curl -s ifconfig.me 2>/dev/null || curl -s ip.sb 2>/dev/null || echo "YOUR_SERVER_IP")
 
     echo ""
     echo -e "${GREEN}========================================${NC}"
-    echo -e "${GREEN}    安装完成!${NC}"
+    echo -e "${GREEN}    Install Complete!${NC}"
     echo -e "${GREEN}========================================${NC}"
     echo ""
-    echo "  面板地址:  http://$SERVER_IP:$PANEL_PORT"
-    echo "  管理员:    $ADMIN_EMAIL"
+    echo "  Panel:     http://$SERVER_IP:$PANEL_PORT"
+    echo "  Admin:     $ADMIN_EMAIL"
     echo ""
-    echo "  FRPS 端口: $BIND_PORT"
+    echo "  FRPS port: $BIND_PORT"
     [ -n "$DASHBOARD_PORT" ] && echo "  Dashboard: http://$SERVER_IP:$DASHBOARD_PORT"
     echo ""
-    echo -e "${YELLOW}常用命令:${NC}"
-    echo "  查看面板日志:  journalctl -u frp-panel -f"
-    echo "  查看FRPS日志:  journalctl -u frps -f"
-    echo "  重启面板:      systemctl restart frp-panel"
-    echo "  重启FRPS:      systemctl restart frps"
-    echo "  停止所有:       systemctl stop frp-panel frps"
+    echo -e "${YELLOW}Useful commands:${NC}"
+    echo "  Panel log:    journalctl -u frp-panel -f"
+    echo "  FRPS log:     journalctl -u frps -f"
+    echo "  Restart panel: systemctl restart frp-panel"
+    echo "  Restart frps:  systemctl restart frps"
+    echo "  Stop all:      systemctl stop frp-panel frps"
     echo ""
-    echo -e "${YELLOW}配置文件位置:${NC}"
-    echo "  面板配置:  $INSTALL_DIR/config.yaml"
-    echo "  FRPS配置:  $INSTALL_DIR/frps.toml"
+    echo -e "${YELLOW}Config files:${NC}"
+    echo "  Panel:  $INSTALL_DIR/config.yaml"
+    echo "  FRPS:   $INSTALL_DIR/frps.toml"
     echo ""
-    echo -e "${CYAN}请先登录面板修改默认密码!${NC}"
+    echo -e "${CYAN}Please change the default password after first login!${NC}"
     echo ""
 }
 
-# 卸载功能
 uninstall() {
     echo -e "${RED}========================================${NC}"
-    echo -e "${RED}    卸载 FRP Panel Licensed${NC}"
+    echo -e "${RED}    Uninstall FRP Panel Licensed${NC}"
     echo -e "${RED}========================================${NC}"
     echo ""
-    read -p "$(echo -e ${YELLOW}确定要卸载吗? [y/N]: ${NC})" CONFIRM
+    echo -ne "${YELLOW}Are you sure? [y/N]: ${NC}"
+    read CONFIRM
     if [ "$CONFIRM" != "y" ] && [ "$CONFIRM" != "Y" ]; then
-        echo "卸载已取消"
+        echo "Uninstall cancelled"
         exit 0
     fi
 
@@ -343,10 +319,9 @@ uninstall() {
     rm -f /etc/systemd/system/frps.service
     systemctl daemon-reload
     rm -rf "$INSTALL_DIR"
-    info "卸载完成"
+    info "Uninstall complete"
 }
 
-# 主流程
 main() {
     case "${1:-}" in
         uninstall|--uninstall|-u)
